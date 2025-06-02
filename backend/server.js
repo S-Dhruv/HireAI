@@ -1,137 +1,22 @@
 import express from "express";
 import dotenv from "dotenv";
-import { getQuestions } from "./Ai-Interviewer/questionAi.js";
-import mongoose from "mongoose";
-import Question from "./Models/Question.js";
-import Test from "./Models/Test.js";
-import User from "./Models/User.js";
-import Answer from "./Models/Answer.js";
+import Question from "./Models/question.model.js";
+import Test from "./Models/test.model.js";
+import User from "./Models/user.model.js";
+import Answer from "./Models/answer.model.js";
 import cors from "cors";
-import { Db } from "./connectDb/Db.js";
+import { Db } from "./utils/db.js";
 import { validateAnswer } from "./Ai-Interviewer/validateAnswer.js";
+import authRoutes from "./routes/auth.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 dotenv.config();
-Db();
 const app = express();
-
-// Middleware to parse JSON request bodies
 app.use(express.json());
-app.post("/ai/register", async (req, res) => {
-  const { name, email, password } = req.body;
-  const exist = await User.findOne({ email: email });
-  if (exist) {
-    return res.json({ message: "User already exists" });
-  }
-  const user = new User({
-    name: name,
-    email: email,
-    password: password,
-  });
-  await user.save();
-  res.json(user);
-});
-app.post("/ai/test", async (req, res) => {
-  const { user } = req.body;
-  // const exist = Test.findOne({user:user});
-  if (!user) {
-    return res.json({ message: "User not found" });
-  }
-  const test = new Test({
-    user: user,
-    Score: 0,
-  });
-  await test.save();
-  res.json(test);
-});
-app.post("/ai/question", async (req, res) => {
-  const { topic, difficulty, numberOfQuestions, roundType, TestId } = req.body;
-  const questions = await getQuestions(
-    topic,
-    difficulty,
-    numberOfQuestions,
-    roundType
-  );
-  console.log("Raw questions response:", questions);
-  const requiredData = questions.content;
-  const matches = requiredData.match(/```json\n([\s\S]*?)\n```/)[1];
-  const parsedData = JSON.parse(matches);
-  console.log("Parsed data structure:", JSON.stringify(parsedData, null, 2));
-
-  let questionsArray = [];
-
-  if (!parsedData.questions) {
-    console.error("Error: parsedData.questions is undefined");
-
-    if (Array.isArray(parsedData)) {
-      parsedData.forEach((item) => {
-        if (item.question) questionsArray.push(item.question);
-      });
-    } else {
-      Object.keys(parsedData).forEach((key) => {
-        if (
-          key.toLowerCase().includes("question") &&
-          Array.isArray(parsedData[key])
-        ) {
-          parsedData[key].forEach((item) => {
-            if (typeof item === "string") questionsArray.push(item);
-            else if (item.question) questionsArray.push(item.question);
-          });
-        } else if (
-          typeof parsedData[key] === "string" &&
-          key.toLowerCase().includes("question")
-        ) {
-          questionsArray.push(parsedData[key]);
-        }
-      });
-    }
-  } else {
-    questionsArray = parsedData.questions.map((item) => item.question);
-  }
-
-  console.log("Final questions array:", questionsArray);
-  const question = new Question({
-    testId: TestId,
-    question: questionsArray,
-  });
-  await question.save();
-  console.log(question);
-  res.json(parsedData);
-});
-app.post("/ai/answer", async (req, res) => {
-  const { question, testId } = req.body;
-
-  const answer = [
-    "I dont know",
-    "I had a direct conversation to understand the issue and then redefined their responsibilities to match their strengths.",
-    "I um think we should hear maybe the both parties and then decide i guess",
-  ];
-  const answers = new Answer({
-    question: question,
-    answers: answer,
-    testId: testId,
-  });
-  await answers.save();
-  const questions = await Question.findOne({ testId: testId });
-
-  const validate = await validateAnswer(questions, answer);
-  console.log(validate.content);
-  const text = validate.content;
-  const match = text.match(/End Score:\s*([\d.]+)/);
-  // const score = -1
-  if (match) {
-    const score = match[1];
-    console.log("Average Score is:", score);
-    const currentTest = await Test.findById(testId);
-    currentTest.Score = score;
-    await currentTest.save();
-    res.json(currentTest);
-  } else {
-    console.log("Average Score not found");
-    res.json(validate);
-  }
-
-  // res.json(currentTest);
-});
+app.use(cors());
+app.use(authRoutes);
+app.use(aiRoutes);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
+  Db();
 });
