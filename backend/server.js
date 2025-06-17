@@ -40,6 +40,9 @@ app.post("/ai/test", async (req, res) => {
     Score: 0,
   });
   await test.save();
+  const currentUser = await User.findById(user);
+  currentUser.tests.push(test._id);
+  await currentUser.save();
   res.json(test);
 });
 app.post("/ai/question", async (req, res) => {
@@ -98,11 +101,11 @@ app.post("/ai/question", async (req, res) => {
 });
 app.post("/ai/answer", async (req, res) => {
   const { question, testId } = req.body;
-
+  //comment the below line and destruct the answer from the req.body
   const answer = [
-    "I dont know",
-    "I had a direct conversation to understand the issue and then redefined their responsibilities to match their strengths.",
-    "I um think we should hear maybe the both parties and then decide i guess",
+    "== is used to check strings equality and .equals is used to check objects equality.",
+    "Garbage collection is used to free up memory after its use, this include objects,arrays,functions which are no longer in use",
+    "Final ensured that the value of a variable is not changed after its declaration.",
   ];
   const answers = new Answer({
     question: question,
