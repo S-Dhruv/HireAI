@@ -6,18 +6,23 @@ const testSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  Score:{
-    type:Number,
+  name: {
+    type: String,
   },
-  questions:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"Question",
+  number_of_rounds: {
+    type: Number,
   },
-  answers:{
-    type:mongoose.Schema.Types.ObjectId,
-    ref:"Answer",
-  }
-  
+  Score: {
+    type: Number,
+  },
+  questions: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Question",
+  },
+  answers: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Answer",
+  },
 });
 
 const Test = mongoose.model("Test", testSchema);
