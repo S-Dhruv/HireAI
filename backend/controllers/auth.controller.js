@@ -1,11 +1,12 @@
 import { generateToken } from "../utils/jwt.js";
-import User from "../Models/user.model.js";
+import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
-import cloudinary from "../utils/cloudinary.js";
+// import cloudinary from "../utils/cloudinary.js";
 export const signup = async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const { username, email, password, role } = req.body;
+  console.log("Signup Data :", username, email, password, role);
   try {
-    if (!fullName || !email || !password) {
+    if (!username || !email || !password || !role) {
       return res.status(400).json({
         message: "Inavlid Credentials",
       });
@@ -19,18 +20,20 @@ export const signup = async (req, res) => {
     const hashPassword = await bcrypt.hash(password, salt);
 
     const newUser = await new User({
-      fullName,
+      username,
       email,
-      passWord: hashPassword,
+      password: hashPassword,
+      role,
     });
     if (newUser) {
       const token = generateToken(newUser._id, res);
       await newUser.save();
       res.status(201).json({
         _id: newUser._id,
-        fullName: newUser.fullName,
+        username: newUser.username,
         mail: newUser.email,
         profilePic: newUser.profilePic,
+        role: newUser.role,
         token,
       });
     } else {
@@ -47,6 +50,7 @@ export const signup = async (req, res) => {
 };
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  console.log(email, password);
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -54,7 +58,7 @@ export const login = async (req, res) => {
         message: "Invalid Credentials!",
       });
     }
-    const isPasswordCorrect = await bcrypt.compare(password, user.passWord);
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
       return res.status(400).json({
         message: "Invalid Credentials!",
@@ -77,13 +81,38 @@ export const login = async (req, res) => {
     });
   }
 };
+// export const logout = (req, res) => {
+//   try {
+//     console.log("Logout Request Received");
+
+//     // 👇 Clear the correct cookie
+//     res.cookie("token", "", {
+//       httpOnly: true,
+//       sameSite: "lax",
+//       secure: process.env.NODE_ENV === "production",
+//       expires: new Date(0), // forces immediate expiry
+//     });
+
+//     res.status(200).json({
+//       message: "Logout Successful!",
+//     });
+//   } catch (error) {
+//     console.log("Logout Error:", error);
+//     res.status(500).json({
+//       message: "Internal Error!",
+//     });
+//   }
+// };
 export const logout = (req, res) => {
   try {
-    res.cookie("jwt", "", {
-      maxAge: 0,
+    console.log("Logout Request Received");
+
+    // 👇 Clear the correct cookie
+    res.cookie("token", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: "strict",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      expires: new Date(0), // forces immediate expiry
     });
 
     res.status(200).json({
@@ -91,7 +120,7 @@ export const logout = (req, res) => {
     });
   } catch (error) {
     console.log("Logout Error:", error);
-    return res.status(500).json({
+    res.status(500).json({
       message: "Internal Error!",
     });
   }
@@ -128,7 +157,7 @@ export const updateProfile = async (req, res) => {
 
 export const checkAuth = (req, res) => {
   try {
-    res.status(200).json(req.user);
+    return res.status(200).json(req.user);
   } catch (error) {
     console.log("Error in Auth!");
     req.status(500).json({

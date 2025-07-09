@@ -1,4 +1,4 @@
-import { getQuestions } from "../Ai-Interviewer/questionAi";
+import { getQuestions } from "../Ai-Interviewer/questionAi.js";
 export const questions = async (req, res) => {
   try {
     const { topic, difficulty, numberOfQuestions, roundType, TestId } =
