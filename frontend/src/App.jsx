@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 
 import {Toaster} from "react-hot-toast";
+import HomePage from "./pages/HomePage";
 function App() {
   const { checkAuth, authUser, isCheckingAuth, logout } = useAuthStore();
     useEffect(()=>{
@@ -20,13 +21,10 @@ function App() {
     )
   }
   console.log(authUser);
-  function btnClick() {
-    logout();
-  }
   return(
         <div>
           <Routes>
-            <Route path="/" element= { authUser? <><button onClick={btnClick} >BTN</button></> : <Navigate to="/login" />  } />
+            <Route path="/" element= { authUser? <HomePage/> : <Navigate to="/login" />  } />
             <Route path="/signup" element= { !authUser ? <SignupPage /> : <Navigate to="/"  />  } />
             <Route path="/login" element= { !authUser ? <LoginPage /> :  <Navigate to="/" />  } /> 
             {/* <Route path="/settings" element= {<SettingsPage />} />

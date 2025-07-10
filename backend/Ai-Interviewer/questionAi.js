@@ -1,58 +1,90 @@
-import dotenv from "dotenv";
-dotenv.config();
-import { ChatMistralAI } from "@langchain/mistralai";
-import { PromptTemplate } from "@langchain/core/prompts";
+// import dotenv from "dotenv";
+// import { ChatMistralAI } from "@langchain/mistralai";
+// import { PromptTemplate } from "@langchain/core/prompts";
 
-if (!process.env.MISTRAL_API_KEY) {
-  console.error("❌ MISTRAL_API_KEY not found in environment variables");
-  console.error(
-    "📝 Create a .env file with: MISTRAL_API_KEY=your_api_key_here"
-  );
-  process.exit(1);
-}
+// if (!process.env.MISTRAL_API_KEY) {
+//   console.error("❌ MISTRAL_API_KEY not found in environment variables");
+//   console.error(
+//     "📝 Create a .env file with: MISTRAL_API_KEY=your_api_key_here"
+//   );
+//   process.exit(1);
+// }
 
-console.log("🚀 Starting interview simulation...");
+// console.log("🚀 Starting interview simulation...");
 
-const llm = new ChatMistralAI({
-  temperature: 0.7,
-  apiKey: process.env.MISTRAL_API_KEY,
-});
+// const llm = new ChatMistralAI({
+//   temperature: 0.7,
+//   apiKey: process.env.MISTRAL_API_KEY,
+// });
 
-const interviewPrompt = new PromptTemplate({
-  inputVariables: ["topic", "difficulty", "numberOfQuestions", "roundType"],
-  template: `
-  Generate {numberOfQuestions} {difficulty} {topic} questions for an interview.
-  Make sure that the questions asked are to the point and easy to undestand. Don't ask questions which expect a lengthy answer.
-  But make sure the questions require one to think before answering.
-  Ask new questions every a prompt is triggered.
-  Make it relevant for a professional interview setting. 
-  Output the result in JSON format with proper key-value pairs.
-  if the roundType is "english" then make sure the questions are related to communication skills, problem-solving approach, teamwork, leadership, or situational judgment and dont give an expected answer or else give an expected answer. Rather add the question ID.
-  `,
-});
+// const interviewPrompt = new PromptTemplate({
+//   inputVariables: ["description"],
+//   template: `
+//   **I am using you for my interview prep**.For the given input, gather the information about the company (if there is a name mentioned), and after that i want you to generate all the
+//   interview rounds that are required for the given input.
+//   Consider all the information with atmost care while generating the interview rounds.I want no mistakes to be done and give what they have asked for.If you can browse the web regarding the company and its hiring style or any other things
+//   const answerSchema = new mongoose.Schema({
+//     a_answer: String,
+//     c_answer: String,
+//   });
+//   const questionSchema = new mongoose.Schema({
+//     question: String,
+//   });
 
-export async function getQuestions(
-  topic,
-  difficulty,
-  numberOfQuestions,
-  roundType
-) {
-  const focus =
-    roundType === "english"
-      ? "communication skills, problem-solving approach, teamwork, leadership, or situational judgment"
-      : `Technical QnAs about ${topic} and do not make it very verbose`;
+//   const roundSchema = new mongoose.Schema({
+//     description: String,
+//     roundType: {
+//       type: String,
+//       enum: [
+//         "Aptitude Round",
+//         "Technical Round",
+//         "Telephonic Round",
+//         "DSA Round",
+//         "HR Round",
+//       ],
+//     },
+//     isScorable: Boolean,
+//     questions: [questionSchema],
+//     answers: [answerSchema],
+//     score: Number,
+//     feedback: String,
+//   });
 
-  try {
-    const formattedPrompt = await interviewPrompt.format({
-      topic,
-      difficulty,
-      numberOfQuestions,
-      roundType,
-    });
+//   const testSchema = new mongoose.Schema({
+//     testName: String,
+//     numberOfRounds: Number,
+//     rounds: [roundSchema],
+//   });
+//   this is my db schema for the interview rounds and questions.
+//   I want you to generate data such that i should be able to use it in my database.
+//   I want you to generate the interview rounds based on the input given below.
+//   The input is as follows:
+//   {description}
+//   I WANT YOU TO GENERATE THE INTERVIEW ROUNDS IN A JSON FORMAT.
+//   For the Aptitude adn English rounds, I want you to generate questions that are related to the topic and difficulty level mentioned, if there isnt any generate what fits the best.
+//   For the Technical round, I want you to generate questions that are related to the topics that are mentioned in the description, if there arent any generate questions on the CS Fundamentals
+//   For these 2 rounds (Aptitude and Technical), I want you to generate the questions in the following format:
+//   {
+//     "question": "What is the next number in the sequence: 2, 4, 6, 8?",
+//     "options": ["10", "12", "14", "16"],
+//     "correctAnswer": "10"
+//   }
 
-    const response = await llm.invoke(formattedPrompt);
-    return response;
-  } catch (error) {
-    console.log("❌ Error generating interview questions:", error);
-  }
-}
+//   For the telephonic round, I want you to generate questions that are related to the CS Fundamentals and if there is some data mentioned about the projects that are mentioned in the description, i want you to ask questions on them too.
+//   For this round i want the output to be in the following format:
+//   {
+//     "question": "Explain the concept of polymorphism in object-oriented programming.",
+//     "options": [],
+//     "correctAnswer": "Polymorphism allows methods to do different things based on the object it is acting upon, enabling a single interface to represent different underlying forms (data types)."
+//   }
+//   For the DSA round, I want you to generate a Data Structures and Algorithms Problems
+//   Give me the problem description of it, i want you to include the problem description, constraints, couple of sample test cases and also, as you do for the aptitude rounds, here the options are supposed to be the testcases and at the end give me the correct answer for them.
+//   For this round the format should be:
+//   {
+//     "question": "Give all the data that i have asked for like the description, constraints, and sample test cases
+//     "options": [test cases]
+//     "correctAnswer": [answers for the test cases],
+//   }
+//   And for the HR Dont do anything, just leave it!
+//     `,
+// });
