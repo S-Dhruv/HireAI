@@ -1,10 +1,9 @@
 import mongoose from "mongoose";
-const answerSchema = new mongoose.Schema({
-  a_answer: String,
-  c_answer: String,
-});
-const questionSchema = new mongoose.Schema({
+
+const qnASchema = new mongoose.Schema({
   question: String,
+  options: [String],
+  correctAnswer: String,
 });
 
 const roundSchema = new mongoose.Schema({
@@ -13,15 +12,14 @@ const roundSchema = new mongoose.Schema({
     type: String,
     enum: [
       "Aptitude Round",
+      "Technical Round",
       "Telephonic Round",
       "DSA Round",
-      "Technical Round",
       "HR Round",
     ],
   },
   isScorable: Boolean,
-  questions: [questionSchema],
-  answers: [answerSchema],
+  qnASchema: [qnASchema],
   score: Number,
   feedback: String,
 });

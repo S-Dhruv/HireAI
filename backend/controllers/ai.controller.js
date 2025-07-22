@@ -1,111 +1,106 @@
-import { getQuestions } from "../Ai-Interviewer/questionAi.js";
-export const questions = async (req, res) => {
+import dotenv from "dotenv";
+import { ChatMistralAI } from "@langchain/mistralai";
+import { PromptTemplate } from "@langchain/core/prompts";
+import User from "../models/user.model.js";
+export const createTest = async (req, res) => {
+  const llm = new ChatMistralAI({
+    temperature: 0.7,
+    apiKey: process.env.MISTRAL_API_KEY,
+  });
+  console.log(process.env.MISTRAL_API_KEY);
+
+  const interviewPrompt = new PromptTemplate({
+    inputVariables: ["description"],
+    template: `
+You are an AI system for interview preparation.
+
+Given the following user description, generate interview rounds and questions in raw, clean JSON. Do not include formatting (like asterisks **, markdown blocks, or backticks). Only return a valid JSON object.
+
+Use the following schema structure:
+{{
+  "testName": "string",
+  "numberOfRounds": number,
+  "rounds": [
+    {{
+      "description": "string",
+      "roundType": "Aptitude Round" | "Technical Round" | "Telephonic Round" | "DSA Round" | "HR Round",
+      "isScorable": boolean,
+      "questions": [
+        {{
+          "question": "string",
+          "options": ["string", ...],
+          "correctAnswer": "string"
+        }}
+      ],
+      "answers": [],
+      "score": 0,
+      "feedback": ""
+    }}
+  ]
+}}
+
+Use this format:
+1. Aptitude & Technical: include options and correctAnswer.
+2. Telephonic: only question and correctAnswer (no options).
+3. DSA: include description, constraints, test cases in question. Options = test cases, correctAnswer = expected outputs.
+4. HR: leave round empty or omit.
+
+INPUT:
+{description}
+`,
+  });
+
   try {
-    const { topic, difficulty, numberOfQuestions, roundType, TestId } =
-      req.body;
-    const questions = await getQuestions(
-      topic,
-      difficulty,
-      numberOfQuestions,
-      roundType
-    );
-    console.log("Raw questions response:", questions);
-    const requiredData = questions.content;
-    const matches = requiredData.match(/```json\n([\s\S]*?)\n```/)[1];
-    const parsedData = JSON.parse(matches);
-    console.log("Parsed data structure:", JSON.stringify(parsedData, null, 2));
-    let questionsArray = [];
-    if (!parsedData.questions) {
-      console.error("Error: parsedData.questions is undefined");
-      if (Array.isArray(parsedData)) {
-        parsedData.forEach((item) => {
-          if (item.question) questionsArray.push(item.question);
-        });
-      } else {
-        Object.keys(parsedData).forEach((key) => {
-          if (
-            key.toLowerCase().includes("question") &&
-            Array.isArray(parsedData[key])
-          ) {
-            parsedData[key].forEach((item) => {
-              if (typeof item === "string") questionsArray.push(item);
-              else if (item.question) questionsArray.push(item.question);
-            });
-          } else if (
-            typeof parsedData[key] === "string" &&
-            key.toLowerCase().includes("question")
-          ) {
-            questionsArray.push(parsedData[key]);
-          }
-        });
-      }
-    } else {
-      questionsArray = parsedData.questions.map((item) => item.question);
+    const { description, id } = req.body;
+
+    if (!description || !id) {
+      return res.status(400).json({ message: "Invalid Input" });
     }
 
-    console.log("Final questions array:", questionsArray);
-    const question = new Question({
-      testId: TestId,
-      question: questionsArray,
-    });
-    await question.save();
-    console.log(question);
-    res.json(parsedData);
-  } catch (error) {
-    console.log(error.message);
-  }
-};
-export const answers = async (req, res) => {
-  try {
-    const { question, testId } = req.body;
+    const formattedPrompt = await interviewPrompt.format({ description });
+    const response = await llm.invoke(formattedPrompt);
+    let rawText = response?.content || "";
+    console.log("Raw LLM Response:\n", rawText);
 
-    const answer = [
-      "I dont know",
-      "I had a direct conversation to understand the issue and then redefined their responsibilities to match their strengths.",
-      "I um think we should hear maybe the both parties and then decide i guess",
-    ];
-    const answers = new Answer({
-      question: question,
-      answers: answer,
-      testId: testId,
-    });
-    await answers.save();
-    const questions = await Question.findOne({ testId: testId });
-
-    const validate = await validateAnswer(questions, answer);
-    console.log(validate.content);
-    const text = validate.content;
-    const match = text.match(/End Score:\s*([\d.]+)/);
-    // const score = -1
-    if (match) {
-      const score = match[1];
-      console.log("Average Score is:", score);
-      const currentTest = await Test.findById(testId);
-      currentTest.Score = score;
-      await currentTest.save();
-      res.json(currentTest);
-    } else {
-      console.log("Average Score not found");
-      res.json(validate);
+    const match = rawText.match(/({[\s\S]*})/);
+    if (!match) {
+      return res
+        .status(500)
+        .json({ message: "No JSON found in model response" });
     }
-  } catch (error) {
-    console.log(error.message);
-  }
-};
 
-export const test = async (req, res) => {
-  try {
-    const { user } = req.body;
+    const jsonString = match[1];
+    const parsed = JSON.parse(jsonString);
+
+    const formattedTest = {
+      testName: parsed.testName,
+      numberOfRounds: parsed.numberOfRounds,
+      rounds: parsed.rounds.map((round) => ({
+        description: round.description,
+        roundType: round.roundType,
+        isScorable: round.isScorable,
+        score: round.score || 0,
+        feedback: round.feedback || "",
+        qnASchema: (round.questions || []).map((q) => ({
+          question: q.question,
+          options: q.options || [],
+          correctAnswer: q.correctAnswer || "",
+        })),
+      })),
+    };
+
+    const user = await User.findById(id);
     if (!user) {
-      return res.json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
-    const test = new Test({
-      user: user,
-      Score: 0,
-    });
-    await test.save();
-    res.json(test);
+
+    user.tests.push(formattedTest);
+    await user.save();
+
+    console.log("✅ Interview Test Created:", formattedTest);
+    return res.status(200).json({ message: "Interview Test Created" });
   } catch (error) {
-    console.log(error.message);
+    console.log("❌ Error generating interview questions:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

@@ -4,6 +4,7 @@ import cors from "cors";
 import { Db } from "./utils/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
+import testRoutes from "./routes/tests.routes.js";
 import cookieParser from "cookie-parser";
 import { app, server } from "./utils/socket.io.js";
 dotenv.config();
@@ -18,7 +19,8 @@ app.use(
   })
 );
 app.use("/api/auth", authRoutes);
-app.use(aiRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/tests", testRoutes);
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   Db();
