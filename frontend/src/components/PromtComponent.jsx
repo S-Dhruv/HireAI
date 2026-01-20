@@ -28,10 +28,9 @@ const { authUser } = useAuthStore();
   };    return (
         <>
             <div className="p-6 space-y-6">
-                <h1 className="text-2xl font-bold">Welcome, {authUser?.username} 👋</h1>
+                <h1 className="text-2xl font-bold">Welcome, {authUser?.username}!</h1>
                 <p className="text-base text-gray-500">Prompt the system about your interview flow</p>
 
-                {/* Interview Description Prompt */}
                 <div className="bg-base-100 p-6 rounded-xl shadow space-y-4 border border-base-200">
                     <label className="label">
                     <span className="label-text font-semibold text-lg">Describe the Interview</span>
