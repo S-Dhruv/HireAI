@@ -12,6 +12,7 @@ import PromtComponent from "./components/PromtComponent";
 import Practise from "./components/Practise";
 import Explore from "./components/Explore";
 import Profile from "./components/Profile";
+import Aptitude from "./pages/Aptitude";
 function App() {
   const { checkAuth, authUser, isCheckingAuth } = useAuthStore();
     useEffect(()=>{
@@ -35,6 +36,7 @@ function App() {
             <Route path={ "/practice"} element={<Practise/>}></Route>
             <Route path={ "/explore"} element={<Explore/>}></Route>
             <Route path={ "/profile"} element={<Profile/>}></Route>
+            <Route path={ "/aptitude"} element={<Aptitude/>}></Route>
           </Route>
             <Route path="/signup" element= { !authUser ? <SignupPage /> : <Navigate to="/"  />  } />
             <Route path="/login" element= { !authUser ? <LoginPage /> :  <Navigate to="/" />  } /> 

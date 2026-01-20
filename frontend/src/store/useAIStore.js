@@ -5,9 +5,9 @@ const BASE_URL =
   import.meta.env.MODE && import.meta.env.MODE === "development"
     ? "http://localhost:5004"
     : "/";
-export const useAIStore = create((set, get) => ({
+export const useAIStore = create((set) => ({
   rounds: [],
-  tests:[],
+  tests: [],
   isLoadingRounds: false,
   createTest: async (data) => {
     set({ isLoadingRounds: true });
