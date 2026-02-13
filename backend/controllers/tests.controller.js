@@ -1,4 +1,7 @@
+import axios from "axios";
 import User from "../models/user.model.js";
+import { ChatMistralAI } from "@langchain/mistralai";
+import { PromptTemplate } from "@langchain/core/prompts";
 export const getTests = async (req, res) => {
   try {
     console.log("r", req.body);
@@ -46,54 +49,78 @@ export const getRounds = async (req, res) => {
 export const evalTest = async (req, res) => {
   try {
     const userId = req.user._id;
-    const {
-      testIndex,
-      roundIndex,
-      roundType,
-      questions,
-      answers,
-      score,
-      feedback,
-    } = req.body;
+    const { testIndex, roundIndex, roundType, answers } = req.body;
+
     const user = await User.findById(userId);
     const round = user.tests[testIndex].rounds[roundIndex];
+
     if (round.status === true) {
       return res.status(400).json({ message: "Round already completed" });
     }
-    if (round.isScorable) {
-      // if (roundType === "Aptitude Round") {
-      //   score = 0;
-      //   round.questions.forEach((q) => {
-      //     if (answers[q._id] === q.correctAnswer) {
-      //       score += 1;
-      //     }
-      //   });
-      // }
-      // if (roundType === "DSA Round") {
-      //   score = Object.values(answers).filter((v) => v === true).length;
-      // }
-      round.score = score;
-    } else {
-      if (roundType === "Telephonic Round") {
-        const aiResponse = await axios.post(
-          "http://ai-backend/evaluate-telephonic",
-          { questions, answers },
-        );
 
-        feedback = aiResponse.data.feedback;
-        round.feedback = feedback;
+    let score = null;
+    let feedback = null;
+
+    if (round.isScorable && roundType === "Aptitude Round") {
+      score = 0;
+      for (const q of round.questions) {
+        if (answers[q._id] === q.correctAnswer) {
+          score++;
+        }
       }
+      round.score = score;
     }
 
+    if (!round.isScorable && roundType === "Telephonic Round") {
+      const llm = new ChatMistralAI({
+        temperature: 0.2,
+        apiKey: process.env.MISTRAL_API_KEY,
+      });
+      const formattedQA = round.questions
+        .map((q, index) => {
+          const ans = answers[q._id] || "No answer provided";
+          return `Question ${index + 1}:
+        ${q.question}Answer: ${ans}`;
+        })
+        .join("\n");
+
+      console.log(formattedQA);
+      const prompt = `
+You are a senior technical interviewer at a top-tier product company.
+
+Evaluate the following telephonic interview responses professionally and critically.
+
+Be realistic. Do NOT overpraise. Do NOT be overly harsh.
+Assume this is a real hiring evaluation.
+
+For your evaluation, provide:
+
+1. Communication & Clarity (clear, concise, structured or not?)
+2. Technical/Conceptual Depth (if applicable)
+3. Strengths (bullet points)
+4. Areas of Improvement (bullet points with specific suggestions)
+5. Hiring Signal (Strong Hire / Hire / Lean Hire / Lean Reject / Reject)
+6. A short final summary paragraph as an interviewer would write internally.
+
+Keep the tone professional and structured.
+Do not repeat the full questions.
+Do not restate answers.
+Focus on evaluation only.
+
+Responses:
+${formattedQA}
+`;
+
+      const response = await llm.invoke(prompt);
+
+      feedback = response?.content || "No feedback generated.";
+      round.feedback = feedback;
+    }
     round.status = true;
     await user.save();
-
-    res.json({
-      success: true,
-      score,
-      feedback,
-    });
+    res.json({ success: true, score, feedback });
   } catch (error) {
-    console.log("eval test controller", error);
+    console.error("eval test controller", error);
+    res.status(500).json({ message: "Evaluation failed" });
   }
 };
