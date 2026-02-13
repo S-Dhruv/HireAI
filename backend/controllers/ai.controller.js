@@ -41,10 +41,10 @@ Use the following schema structure:
 }}
 
 Rules:
-1. **Aptitude Round** → focus on advanced logical reasoning, probability, optimization, data interpretation.  
+1. **Aptitude Round** → focus on advanced logical reasoning, probability, optimization, data interpretation. If the number of questions are mentioned in the input then generated them accordingly, however the default questions (if not mentioned in the description/input variables) generate 10 questions.  
    Example: "A train leaves Station A at 60km/h, another leaves Station B... When will they meet?"  
 2. **Technical Round** → deep CS fundamentals (OS, DBMS, Networking, System Design). Avoid trivial syntax questions.  
-3. **Telephonic Round** → scenario-based (e.g., debugging a distributed system crash, tradeoffs in architecture).  
+3. **Telephonic Round** → scenario-based and based on the inputs, if number of questions are mentioned in the input itself then you just generate those many questions, if not then default give me with 10 questions (e.g., debugging a distributed system crash, tradeoffs in architecture).  
 4. **DSA Round** → medium-hard to hard coding challenges. Each question must include:
    - Problem description
    - Constraints
@@ -124,3 +124,69 @@ INPUT:
   }
 };
 
+export const evaluateTelephonic = async (req, res) => {
+  try {
+    const { testIndex, roundIndex, roundType, answers } = req.body;
+    const userId = req.user._id;
+
+    if (!answers || roundType !== "Telephonic Round") {
+      return res.status(400).json({ message: "Invalid request" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const round = user.tests[testIndex].rounds[roundIndex];
+
+    if (round.status === true) {
+      return res.status(400).json({ message: "Round already completed" });
+    }
+
+    // 🔹 Build formatted Q&A string
+    const formattedQA = round.questions
+      .map((q, index) => {
+        const ans = answers[q._id] || "No answer provided";
+        return `Q${index + 1}: ${q.question}\nAnswer: ${ans}\n`;
+      })
+      .join("\n");
+
+    const llm = new ChatMistralAI({
+      temperature: 0.3,
+      apiKey: process.env.MISTRAL_API_KEY,
+    });
+
+    const evaluationPrompt = `
+You are an expert interview evaluator.
+
+Evaluate the following telephonic interview responses.
+
+Provide:
+1. Overall communication quality
+2. Clarity of responses
+3. Strengths
+4. Areas of improvement
+5. Final summary paragraph
+
+Responses:
+${formattedQA}
+`;
+
+    const response = await llm.invoke(evaluationPrompt);
+    const feedback = response?.content || "No feedback generated.";
+
+    round.feedback = feedback;
+    round.status = true;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Telephonic round evaluated successfully",
+      feedback,
+    });
+  } catch (error) {
+    console.error("Telephonic evaluation error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
