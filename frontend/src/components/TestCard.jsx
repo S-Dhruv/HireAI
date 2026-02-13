@@ -1,6 +1,6 @@
 import { useAIStore } from "../store/useAIStore";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const roundRouteMap = {
@@ -13,10 +13,19 @@ const roundRouteMap = {
 
 const TestCard = ({ id }) => {
   const { tests, getTests, isLoadingRounds } = useAIStore();
+  const [expandedFeedback, setExpandedFeedback] = useState({});
 
   useEffect(() => {
     if (id) getTests(id);
   }, [id, getTests]);
+
+  const toggleFeedback = (testIndex, roundIndex) => {
+    const key = `${testIndex}-${roundIndex}`;
+    setExpandedFeedback((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   if (isLoadingRounds) {
     return (
@@ -54,24 +63,20 @@ const TestCard = ({ id }) => {
 
             {test.rounds?.map((round, rIndex) => {
               const route = roundRouteMap[round.roundType];
+              const key = `${index}-${rIndex}`;
+              const isExpanded = expandedFeedback[key];
 
               return (
                 <div
                   key={rIndex}
                   className="p-4 rounded-lg border border-base-300 bg-base-50"
                 >
-                  {/* Round Title */}
                   <h3 className="font-semibold text-accent mb-1">
                     {round.roundType}
                   </h3>
 
-                  {/* Description */}
-                  <p className="text-sm italic text-gray-500 mb-3">
-                    {round.description}
-                  </p>
+                  <div className="flex items-center gap-4 flex-wrap mt-2">
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-4 flex-wrap">
                     {/* Take Test */}
                     {!round.status && route && (
                       <Link
@@ -83,21 +88,28 @@ const TestCard = ({ id }) => {
                       </Link>
                     )}
 
-                    {/* Score (Scorable rounds) */}
+                    {/* Score (ONLY if scorable + completed) */}
                     {round.status && round.isScorable && (
                       <span className="text-sm font-semibold text-success">
                         Score: {round.score}
                       </span>
                     )}
 
-                    {/* Feedback (Non-scorable rounds) */}
+                    {/* Toggle Feedback (ONLY if non-scorable + completed) */}
                     {round.status && !round.isScorable && (
-                      <span className="text-sm font-semibold text-info">
-                        Feedback submitted
-                      </span>
+                      <button
+                        onClick={() => toggleFeedback(index, rIndex)}
+                        className="btn btn-outline btn-sm flex items-center gap-2"
+                      >
+                        {isExpanded ? "Hide Feedback" : "View Feedback"}
+                        {isExpanded ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
+                      </button>
                     )}
 
-                    {/* Status Badge */}
                     <span
                       className={`badge ${
                         round.status
@@ -108,6 +120,15 @@ const TestCard = ({ id }) => {
                       {round.status ? "Completed" : "Pending"}
                     </span>
                   </div>
+
+                  {/* Feedback Content */}
+                  {round.status && !round.isScorable && isExpanded && (
+                    <div className="mt-4 p-4 bg-base-200 rounded-lg border border-base-300">
+                      <p className="text-sm whitespace-pre-line">
+                        {round.feedback || "No feedback available."}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
