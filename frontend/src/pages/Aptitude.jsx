@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTestStore } from "../store/useTestStore";
 
 function Aptitude() {
   const { state } = useLocation();
+  const navigate = useNavigate();
   const { round } = state || {};
 
   if (!round) return <p>Invalid navigation</p>;
@@ -13,25 +14,24 @@ function Aptitude() {
   const [currentQnIndex, setCurrentQnIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const {evaluate} = useTestStore();
+
+  const { evaluateAptitude } = useTestStore();
 
   const currentQuestion = qns[currentQnIndex];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (submitted) return;
     setSubmitted(true);
-    
-    const score = evaluateTest(qns, answers);
-    console.log("Score:", score);
+
     const data = {
-      testIndex : state.index,
-      roundIndex : state.rIndex,
-      roundType : state.roundType,
-      qns,answers,
-      score,feedBack:""
-    }
-    console.log(data)
-    evaluate(data)
+      testIndex: state.index,
+      roundIndex: state.rIndex,
+      roundType: round.roundType,
+      answers,
+    };
+
+    await evaluateAptitude(data);
+    navigate("/practice");
   };
 
   return (
@@ -71,7 +71,6 @@ function Aptitude() {
         ))}
       </div>
 
-      {/* Navigation */}
       <div className="flex justify-between">
         <button
           className="btn btn-outline"
@@ -100,16 +99,6 @@ function Aptitude() {
       </div>
     </div>
   );
-}
-
-function evaluateTest(questions, answers) {
-  let score = 0;
-  questions.forEach(q => {
-    if (answers[q._id] === q.correctOption) {
-      score += q.marks;
-    }
-  });
-  return score;
 }
 
 export default Aptitude;
